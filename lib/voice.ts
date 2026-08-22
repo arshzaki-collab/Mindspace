@@ -1,0 +1,1 @@
+export const ELEVENLABS_AGENT_ID = process.env.EXPO_PUBLIC_ELEVENLABS_AGENT_ID || 'HKFOb9iktHA85uKXydRT';
