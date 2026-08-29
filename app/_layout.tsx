@@ -11,8 +11,6 @@ import {
   Inter_800ExtraBold,
 } from '@expo-google-fonts/inter';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
-import { ConversationProvider } from '@elevenlabs/react-native';
-
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
@@ -37,16 +35,14 @@ export default function RootLayout() {
   }
 
   return (
-    <ConversationProvider>
       <>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="login" options={{ headerShown: false }} />
-          <Stack.Screen name="voice" options={{ headerShown: false, presentation: 'modal' }} />
-          <Stack.Screen name="+not-found" />
+<Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar style="dark" />
       </>
-    </ConversationProvider>
+
   );
 }

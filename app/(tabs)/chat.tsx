@@ -99,7 +99,6 @@ export default function ChatScreen() {
           <View><Text style={styles.headerTitle}>Wellness Companion</Text><Text style={styles.headerSubtitle}>Listen • reflect • take one next step</Text></View>
         </View>
         <View style={styles.headerActions}>
-          <Pressable onPress={() => router.push('/voice')} hitSlop={10} style={[styles.headerAction, styles.voiceAction]}><Mic size={17} color={Colors.primary[700]} /></Pressable>
           <Pressable onPress={clearChat} hitSlop={12} style={styles.headerAction}><RotateCcw size={17} color={Colors.neutral[600]} /></Pressable>
         </View>
       </View>
@@ -143,7 +142,6 @@ const styles = StyleSheet.create({
   headerTitle: { ...Typography.h3, fontFamily: 'Inter-SemiBold', color: Colors.neutral[900] },
   headerSubtitle: { ...Typography.caption, fontFamily: 'Inter-Regular', color: Colors.neutral[500], marginTop: 2 },
   headerAction: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.neutral[200], backgroundColor: Colors.white },
-  voiceAction: { backgroundColor: Colors.primary[50], borderColor: Colors.primary[100] },
   chatList: { paddingHorizontal: Spacing.md, paddingTop: 12, paddingBottom: 8 },
   notice: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 10, borderRadius: Radius.full, backgroundColor: Colors.primary[50], borderWidth: 1, borderColor: Colors.primary[100], marginBottom: 12 },
   noticeText: { ...Typography.caption, fontFamily: 'Inter-Medium', color: Colors.primary[800] },

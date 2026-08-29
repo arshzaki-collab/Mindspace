@@ -10,7 +10,6 @@ const TOOLS = [
   { title: 'Wellness assessment', body: 'A quick check-in that helps you see patterns without turning them into labels.', icon: Brain, bg: Colors.pastel.lavender, color: Colors.primary[700], route: '/assessment' },
   { title: 'Guided breathing', body: 'Choose a pace and let the screen carry the count for you.', icon: Wind, bg: Colors.pastel.mint, color: Colors.accent[700], route: '/breathe' },
   { title: 'Practical tips', body: 'Small exercises for stress, sleep, low mood, focus, and connection.', icon: Lightbulb, bg: Colors.pastel.butter, color: Colors.warning, route: '/tips' },
-  { title: 'Voice therapy', body: 'Talk naturally with your ElevenLabs wellness companion.', icon: Mic, bg: Colors.pastel.pink, color: '#B54E88', route: '/voice' },
 ];
 
 export default function ToolsScreen() {
@@ -28,7 +27,7 @@ export default function ToolsScreen() {
 
         <View style={styles.toolGrid}>
           {TOOLS.map((tool) => (
-            <Pressable key={tool.title} onPress={() => router.push(tool.route as any)} style={({ pressed, hovered }) => [(pressed || hovered) && styles.tilePressed]}>
+            <Pressable key={tool.title} onPress={() => router.push(tool.route as any)} style={({ pressed }) => [pressed && styles.tilePressed]}>
               <Card style={styles.toolCard} accent={tool.color}>
                 <View style={[styles.iconWrap, { backgroundColor: tool.bg }]}><tool.icon size={22} color={tool.color} strokeWidth={2.15} /></View>
                 <Text style={styles.toolTitle}>{tool.title}</Text>

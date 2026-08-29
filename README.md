@@ -38,28 +38,3 @@ eas build --platform android --profile preview
 The `preview` profile is configured to produce an APK. An EAS account is required for cloud builds.
 
 
-## Voice therapy (ElevenLabs)
-
-The app now includes a real-time voice therapy companion using ElevenLabs Agents + LiveKit WebRTC. The configured agent ID is `HKFOb9iktHA85uKXydRT`. ElevenLabs' current React Native SDK requires a native development build; it does not work inside Expo Go.
-
-Install the native voice dependencies:
-
-```bash
-npx expo install @elevenlabs/react-native @livekit/react-native @livekit/react-native-webrtc @config-plugins/react-native-webrtc @livekit/react-native-expo-plugin livekit-client
-```
-
-Then rebuild the native app:
-
-```bash
-npx expo prebuild --clean
-npx expo run:android
-```
-
-Or build a development APK with EAS:
-
-```bash
-npx eas login
-eas build --platform android --profile development
-```
-
-Add `EXPO_PUBLIC_ELEVENLABS_AGENT_ID=HKFOb9iktHA85uKXydRT` to `.env` if you want to override the built-in agent ID. Do not put an ElevenLabs API key in the mobile app.

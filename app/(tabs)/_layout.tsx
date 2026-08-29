@@ -28,8 +28,7 @@ export default function TabLayout() {
       <Tabs.Screen name="assessment" options={{ href: null }} />
       <Tabs.Screen name="breathe" options={{ href: null }} />
       <Tabs.Screen name="tips" options={{ href: null }} />
-      <Tabs.Screen name="voice" options={{ href: null }} />
-    </Tabs>
+</Tabs>
   );
 }
 

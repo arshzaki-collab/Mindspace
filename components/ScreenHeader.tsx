@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, Pressable, type ReactNode } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import type { ReactNode } from 'react';
 import { ChevronRight, Sparkles } from 'lucide-react-native';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 
@@ -27,7 +28,7 @@ export function ScreenHeader({
       </View>
       {action ? (
         <Pressable
-          style={({ pressed, hovered }) => [styles.action, (pressed || hovered) && styles.actionActive]}
+          style={({ pressed }) => [styles.action, pressed && styles.actionActive]}
           onPress={action.onPress}
           accessibilityRole="button"
         >

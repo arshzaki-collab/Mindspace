@@ -52,7 +52,6 @@ export default function HomeScreen() {
     { title: 'Breathe', helper: 'Reset your pace', icon: Wind, color: Colors.accent[700], bg: Colors.pastel.mint, route: '/breathe' },
     { title: 'Journal', helper: 'Put it into words', icon: BookOpen, color: '#B54E88', bg: Colors.pastel.pink, route: '/journal' },
     { title: 'Tips', helper: 'Practical support', icon: Lightbulb, color: Colors.warning, bg: Colors.pastel.butter, route: '/tips' },
-    { title: 'Voice therapy', helper: 'Talk out loud', icon: Mic, color: '#B54E88', bg: Colors.pastel.pink, route: '/voice' },
   ];
 
   return (
@@ -67,7 +66,7 @@ export default function HomeScreen() {
               <View style={styles.brandMark}><Sparkles size={15} color={Colors.white} /></View>
               <Text style={styles.brandText}>MINDSPACE</Text>
             </View>
-            <Pressable onPress={() => router.push('/login')} style={({ pressed, hovered }) => [styles.signIn, (pressed || hovered) && styles.signInActive]}>
+            <Pressable onPress={() => router.push('/login')} style={({ pressed }) => [styles.signIn, pressed && styles.signInActive]}>
               <LogIn size={15} color={Colors.neutral[800]} />
               <Text style={styles.signInText}>Sign in</Text>
             </Pressable>
@@ -148,7 +147,7 @@ function StatCard({ label, value, accent }: { label: string; value: string; acce
 
 function ActionTile({ icon: Icon, title, helper, color, bg, onPress, compact }: { icon: ElementType; title: string; helper: string; color: string; bg: string; onPress: () => void; compact?: boolean }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed, hovered }) => [styles.actionTile, { backgroundColor: bg, borderLeftColor: color }, (pressed || hovered) && styles.actionActive]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.actionTile, { backgroundColor: bg, borderLeftColor: color }, pressed && styles.actionActive]}>
       <View style={[styles.actionIcon, { backgroundColor: Colors.white }]}><Icon size={compact ? 19 : 21} color={color} strokeWidth={2.25} /></View>
       <Text style={styles.actionTitle}>{title}</Text>
       <View style={styles.actionBottom}><Text style={styles.actionHelper}>{helper}</Text><ArrowUpRight size={15} color={color} /></View>
