@@ -39,3 +39,4 @@ yarn-error.*
 skills-lock.json
 supabase/.temp/
 .repair-backup/
+*.apk
