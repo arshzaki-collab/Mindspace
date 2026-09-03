@@ -30,7 +30,7 @@ export default function LoginScreen() {
     setBusy(false);
     if (result.error) { setMessage(result.error.message); return; }
     if (mode === 'signUp') setMessage('Account created. Check your email if confirmation is enabled.');
-    else router.replace('/');
+    else router.replace('/(tabs)');
   };
 
   return (
@@ -67,7 +67,7 @@ export default function LoginScreen() {
             <View style={styles.cardFoot}><ShieldCheck size={14} color={Colors.primary[600]} /><Text style={styles.cardFootText}>Authentication is handled by your connected Supabase project.</Text></View>
           </View>
 
-          <Pressable onPress={() => router.replace('/')} style={styles.skip}><UserRoundPlus size={15} color={Colors.neutral[500]} /><Text style={styles.skipText}>Continue without an account</Text></Pressable>
+          <Pressable onPress={() => router.replace('/(tabs)')} style={styles.skip}><UserRoundPlus size={15} color={Colors.neutral[500]} /><Text style={styles.skipText}>Continue without an account</Text></Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

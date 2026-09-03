@@ -1,81 +1,22 @@
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { ScrollView,StyleSheet,Text,Pressable,View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Brain, Wind, Lightbulb, ChevronRight, Check, TerminalSquare, Sparkles, Mic } from 'lucide-react-native';
-import { Card } from '@/components/Card';
-import { ScreenHeader } from '@/components/ScreenHeader';
-import { Colors, Typography, Spacing, Radius, Shadows } from '@/lib/theme';
-
-const TOOLS = [
-  { title: 'Wellness assessment', body: 'A quick check-in that helps you see patterns without turning them into labels.', icon: Brain, bg: Colors.pastel.lavender, color: Colors.primary[700], route: '/assessment' },
-  { title: 'Guided breathing', body: 'Choose a pace and let the screen carry the count for you.', icon: Wind, bg: Colors.pastel.mint, color: Colors.accent[700], route: '/breathe' },
-  { title: 'Practical tips', body: 'Small exercises for stress, sleep, low mood, focus, and connection.', icon: Lightbulb, bg: Colors.pastel.butter, color: Colors.warning, route: '/tips' },
+import { Brain,Wind,Lightbulb,Moon,ShieldAlert,Activity,Sparkles,ArrowUpRight } from 'lucide-react-native';
+import { AmbientBackground,GlassCard,GlowOrb,P,Reveal } from '@/components/PremiumUI';
+const TOOLS=[
+ {title:'AI Voice Therapist',sub:'Live voice session with Dr. Maya',icon:Sparkles,c:P.purple,route:'/therapist'},
+ {title:'Wellness Assessment',sub:'Understand your patterns',icon:Brain,c:P.cyan,route:'/assessment'},
+ {title:'Guided Breathing',sub:'Regulate your pace',icon:Wind,c:P.mint,route:'/breathe'},
+ {title:'Sleep Reset',sub:'Wind down with intention',icon:Moon,c:P.pink,route:'/breathe'},
+ {title:'Daily Tips',sub:'Small practical support',icon:Lightbulb,c:P.gold,route:'/tips'},
+ {title:'Emergency Support',sub:'Find immediate resources',icon:ShieldAlert,c:P.danger,route:'/tips'},
+ {title:'Progress & Insights',sub:'See your wellness signals',icon:Activity,c:P.mint,route:'/assessment'},
 ];
-
-export default function ToolsScreen() {
-  const router = useRouter();
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <ScreenHeader eyebrow="Your toolkit" title="Support tools" subtitle="Use what fits the moment. Nothing here needs to be perfect." />
-
-        <Card tone="soft" style={styles.intentCard} accent={Colors.primary[500]}>
-          <View style={styles.intentTop}><Sparkles size={17} color={Colors.primary[700]} /><Text style={styles.intentTitle}>Start small.</Text></View>
-          <Text style={styles.intentBody}>It's not about completing every tool — it's about finding one useful next step.</Text>
-          <View style={styles.checkList}>{['2–10 minute activities', 'No streaks or pressure', 'Built around reflection, not performance'].map((item) => <View key={item} style={styles.checkItem}><View style={styles.checkIcon}><Check size={12} color={Colors.primary[700]} /></View><Text style={styles.checkText}>{item}</Text></View>)}</View>
-        </Card>
-
-        <View style={styles.toolGrid}>
-          {TOOLS.map((tool) => (
-            <Pressable key={tool.title} onPress={() => router.push(tool.route as any)} style={({ pressed }) => [pressed && styles.tilePressed]}>
-              <Card style={styles.toolCard} accent={tool.color}>
-                <View style={[styles.iconWrap, { backgroundColor: tool.bg }]}><tool.icon size={22} color={tool.color} strokeWidth={2.15} /></View>
-                <Text style={styles.toolTitle}>{tool.title}</Text>
-                <Text style={styles.toolBody}>{tool.body}</Text>
-                <View style={styles.toolLink}><Text style={[styles.toolLinkText, { color: tool.color }]}>Open tool</Text><ChevronRight size={15} color={tool.color} /></View>
-              </Card>
-            </Pressable>
-          ))}
-        </View>
-
-        <View style={styles.terminal}>
-          <View style={styles.terminalTop}><View style={styles.termDots}><View style={[styles.termDot, { backgroundColor: Colors.neon.pink }]} /><View style={[styles.termDot, { backgroundColor: Colors.neon.yellow }]} /><View style={[styles.termDot, { backgroundColor: Colors.neon.lime }]} /></View><Text style={styles.termTitle}>mindspace / status</Text></View>
-          <View style={styles.terminalBody}><Text style={styles.termLine}><Text style={styles.termPrompt}>$</Text> local_engine <Text style={styles.termOkay}>ready</Text></Text><Text style={styles.termLine}><Text style={styles.termPrompt}>$</Text> session_state <Text style={styles.termMuted}>private</Text></Text><Text style={styles.termLine}><Text style={styles.termPrompt}>$</Text> next_step <Text style={styles.termAccent}>one useful thing</Text></Text></View>
-        </View>
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.white },
-  scroll: { padding: Spacing.lg, paddingBottom: 40 },
-  intentCard: { marginBottom: Spacing.lg },
-  intentTop: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  intentTitle: { ...Typography.h3, fontFamily: 'Inter-SemiBold', color: Colors.neutral[900] },
-  intentBody: { ...Typography.body, fontFamily: 'Inter-Regular', color: Colors.neutral[600], marginTop: 6, lineHeight: 22 },
-  checkList: { marginTop: Spacing.md, gap: 7 },
-  checkItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  checkIcon: { width: 20, height: 20, borderRadius: 7, backgroundColor: Colors.primary[100], alignItems: 'center', justifyContent: 'center' },
-  checkText: { ...Typography.small, fontFamily: 'Inter-Medium', color: Colors.neutral[600] },
-  toolGrid: { gap: 10 },
-  tilePressed: { transform: [{ translateY: -2 }] },
-  toolCard: { padding: 16 },
-  iconWrap: { width: 45, height: 45, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  toolTitle: { ...Typography.h3, fontFamily: 'Inter-SemiBold', color: Colors.neutral[900] },
-  toolBody: { ...Typography.small, fontFamily: 'Inter-Regular', color: Colors.neutral[500], marginTop: 5, lineHeight: 20 },
-  toolLink: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 13 },
-  toolLinkText: { ...Typography.caption, fontFamily: 'Inter-SemiBold' },
-  terminal: { marginTop: Spacing.xl, borderRadius: Radius.xl, overflow: 'hidden', backgroundColor: Colors.neutral[950], ...Shadows.md },
-  terminalTop: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 13, paddingVertical: 10, backgroundColor: '#101119', borderBottomWidth: 1, borderBottomColor: '#20212B' },
-  termDots: { flexDirection: 'row', gap: 6 },
-  termDot: { width: 7, height: 7, borderRadius: 4 },
-  termTitle: { marginLeft: 10, fontSize: 10, fontFamily: 'Inter-Medium', color: '#8D8F9B' },
-  terminalBody: { padding: 15, gap: 8 },
-  termLine: { fontSize: 12, fontFamily: 'Courier', color: '#E6E7ED' },
-  termPrompt: { color: Colors.neon.purple },
-  termOkay: { color: Colors.neon.lime },
-  termMuted: { color: '#9A9CA8' },
-  termAccent: { color: Colors.neon.cyan },
-});
+export default function ToolsScreen(){const r=useRouter();return <AmbientBackground><SafeAreaView style={styles.safe} edges={['top']}><ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+ <Reveal><View style={styles.hero}><View style={{flex:1}}><Text style={styles.kicker}>YOUR TOOLKIT</Text><Text style={styles.title}>Tools that meet you where you are.</Text><Text style={styles.sub}>No checklist. Pick the experience that fits this moment.</Text></View><GlowOrb size={90}/></View></Reveal>
+ <Reveal delay={100}><GlassCard glow style={styles.ai}><View style={styles.aiIcon}><Sparkles size={19} color={P.white}/></View><View style={{flex:1}}><Text style={styles.aiKicker}>PERSONALIZED</Text><Text style={styles.aiTitle}>Your next useful step</Text><Text style={styles.aiSub}>Start with a mood check-in, then let Mindspace guide what comes next.</Text></View></GlassCard></Reveal>
+ <Text style={styles.section}>EXPLORE</Text><View style={styles.grid}>{TOOLS.map((t,i)=>{const I=t.icon;return <Reveal key={t.title} delay={160+i*45} style={styles.wrap}><Pressable onPress={()=>r.push(t.route as any)} style={({pressed})=>[styles.tile,pressed&&{transform:[{scale:.97}]}]}><View style={[styles.icon,{backgroundColor:`${t.c}18`,shadowColor:t.c}]}><I size={22} color={t.c}/></View><Text style={styles.tileTitle}>{t.title}</Text><Text style={styles.tileSub}>{t.sub}</Text><ArrowUpRight size={16} color={t.c} style={styles.arrow}/></Pressable></Reveal>})}</View>
+ <Reveal delay={500}><GlassCard style={{marginTop:14}}><View style={styles.private}><View style={styles.shield}><ShieldAlert size={18} color={P.mint}/></View><View style={{flex:1}}><Text style={styles.privateTitle}>Support when it matters.</Text><Text style={styles.privateText}>If you feel unsafe or in immediate danger, contact local emergency services or a trusted person.</Text></View></View></GlassCard></Reveal>
+ <View style={{height:100}}/>
+ </ScrollView></SafeAreaView></AmbientBackground>}
+const styles=StyleSheet.create({safe:{flex:1},scroll:{padding:18,paddingBottom:100},hero:{padding:20,borderRadius:28,borderWidth:1,borderColor:'rgba(139,92,246,.28)',backgroundColor:'rgba(16,15,32,.88)',flexDirection:'row',alignItems:'center',overflow:'hidden'},kicker:{color:'#BFAEFF',fontSize:10,letterSpacing:1.8,fontFamily:'Inter-Bold'},title:{color:P.white,fontSize:28,lineHeight:34,fontFamily:'Inter-ExtraBold',marginTop:5,maxWidth:280},sub:{color:P.muted,fontSize:12.5,lineHeight:19,fontFamily:'Inter-Regular',marginTop:7,maxWidth:290},ai:{marginTop:12,flexDirection:'row',gap:12,alignItems:'center'},aiIcon:{width:42,height:42,borderRadius:14,backgroundColor:P.violet,alignItems:'center',justifyContent:'center'},aiKicker:{color:P.purple,fontSize:9,letterSpacing:1.4,fontFamily:'Inter-Bold'},aiTitle:{color:P.white,fontSize:15,fontFamily:'Inter-Bold',marginTop:2},aiSub:{color:P.muted,fontSize:11.5,lineHeight:17,marginTop:3,fontFamily:'Inter-Regular'},section:{color:P.muted,fontSize:10,letterSpacing:1.7,fontFamily:'Inter-Bold',marginTop:25,marginBottom:10},grid:{flexDirection:'row',flexWrap:'wrap',gap:10},wrap:{width:'48%'},tile:{height:160,borderRadius:23,borderWidth:1,borderColor:P.line,backgroundColor:'rgba(16,19,34,.78)',padding:14},icon:{width:46,height:46,borderRadius:15,alignItems:'center',justifyContent:'center',shadowOpacity:.4,shadowRadius:15},tileTitle:{color:P.white,fontSize:14,fontFamily:'Inter-Bold',marginTop:18},tileSub:{color:P.muted,fontSize:10.5,lineHeight:16,fontFamily:'Inter-Regular',marginTop:4,maxWidth:125},arrow:{position:'absolute',right:14,bottom:14},private:{flexDirection:'row',gap:12,alignItems:'center'},shield:{width:42,height:42,borderRadius:14,backgroundColor:'rgba(77,224,178,.1)',alignItems:'center',justifyContent:'center'},privateTitle:{color:P.white,fontSize:14,fontFamily:'Inter-Bold'},privateText:{color:P.muted,fontSize:11.5,lineHeight:17,fontFamily:'Inter-Regular',marginTop:4}});

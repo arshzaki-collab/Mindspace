@@ -1,230 +1,375 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ElementType } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { BlurView } from 'expo-blur';
-import { ArrowUpRight, Brain, HeartPulse, Wind, BookOpen, Lightbulb, MessageCircle, Mic, TrendingUp, AlertCircle, Sparkles, LogIn, ShieldCheck, Check, ChevronRight } from 'lucide-react-native';
-import { Card } from '@/components/Card';
-import { DotGrid } from '@/components/DotGrid';
-import { RainbowAccent } from '@/components/RainbowAccent';
-import { Colors, Typography, Spacing, Radius, Shadows } from '@/lib/theme';
-import { supabase, type MoodEntry, type Assessment } from '@/lib/supabase';
+import { ArrowRight, Brain, BookOpen, HeartPulse, Lightbulb, MessageCircle, Mic, ShieldCheck, Sparkles, Wind, Moon, Target, TrendingUp } from 'lucide-react-native';
+import { type MoodEntry, type Assessment } from '@/lib/supabase';
+import { fetchMoodEntries, fetchAssessments } from '@/lib/localStore';
 import { RISK_META, type RiskLevel } from '@/lib/classifier';
+import { AmbientBackground, GlassCard, GlowOrb, NeonButton, P, Reveal } from '@/components/PremiumUI';
 
-const MOOD_EMOJI: Record<number, string> = { 1: '😔', 2: '😕', 3: '😐', 4: '🙂', 5: '😊' };
+const actions = [
+  { title: 'Log Mood', sub: '2 min check-in', icon: HeartPulse, route: '/mood', c: P.mint },
+  { title: 'AI Companion', sub: 'Talk it out', icon: MessageCircle, route: '/chat', c: P.pink },
+  { title: 'Assess', sub: 'See your patterns', icon: Brain, route: '/assessment', c: P.cyan },
+  { title: 'Breathe', sub: 'Reset your pace', icon: Wind, route: '/breathe', c: P.mint },
+  { title: 'Journal', sub: 'Put it into words', icon: BookOpen, route: '/journal', c: P.purple },
+  { title: 'Tips', sub: 'Daily guidance', icon: Lightbulb, route: '/tips', c: P.gold },
+];
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const compact = width < 390;
-  const [latestMood, setLatestMood] = useState<MoodEntry | null>(null);
-  const [latestAssessment, setLatestAssessment] = useState<Assessment | null>(null);
-  const [checkIns, setCheckIns] = useState(0);
+  const [mood, setMood] = useState<MoodEntry | null>(null);
+  const [assessment, setAssessment] = useState<Assessment | null>(null);
+  const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    const [moodRes, assessRes, moodsAll] = await Promise.all([
-      supabase.from('mood_entries').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle(),
-      supabase.from('assessments').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle(),
-      supabase.from('mood_entries').select('created_at').order('created_at', { ascending: false }).limit(60),
-    ]);
-    if (moodRes.data) setLatestMood(moodRes.data);
-    if (assessRes.data) setLatestAssessment(assessRes.data);
-    if (moodsAll.data) setCheckIns(new Set(moodsAll.data.map((m) => m.created_at.slice(0, 10))).size);
-    setLoading(false);
+  const load = useCallback(async () => {
+    try {
+      const [moodRes, assessRes] = await Promise.all([
+        fetchMoodEntries(60),
+        fetchAssessments(1),
+      ]);
+      const latestMood = moodRes.data?.[0] ?? null;
+      const latestAssess = assessRes.data?.[0] ?? null;
+      const days = new Set((moodRes.data ?? []).map((x) => x.created_at.slice(0, 10))).size;
+
+      setMood(latestMood);
+      setAssessment(latestAssess);
+      setCount(days);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const greeting = (() => {
-    const h = new Date().getHours();
-    if (h < 12) return 'Good morning';
-    if (h < 18) return 'Good afternoon';
-    return 'Good evening';
-  })();
-
-  const actions = [
-    { title: 'Log mood', helper: '2 min check-in', icon: HeartPulse, color: Colors.accent[700], bg: Colors.pastel.mint, route: '/mood' },
-    { title: 'Talk it out', helper: 'Open companion', icon: MessageCircle, color: Colors.primary[700], bg: Colors.pastel.lavender, route: '/chat' },
-    { title: 'Assess', helper: 'See patterns', icon: Brain, color: Colors.primary[700], bg: Colors.pastel.blue, route: '/assessment' },
-    { title: 'Breathe', helper: 'Reset your pace', icon: Wind, color: Colors.accent[700], bg: Colors.pastel.mint, route: '/breathe' },
-    { title: 'Journal', helper: 'Put it into words', icon: BookOpen, color: '#B54E88', bg: Colors.pastel.pink, route: '/journal' },
-    { title: 'Tips', helper: 'Practical support', icon: Lightbulb, color: Colors.warning, bg: Colors.pastel.butter, route: '/tips' },
-  ];
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={[styles.scroll, compact && styles.scrollCompact]} showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <View pointerEvents="none" style={styles.orbPurple} />
-          <View pointerEvents="none" style={styles.orbPink} />
-          <DotGrid style={styles.heroDots} />
-          <View style={styles.heroTop}>
-            <View style={styles.brandLine}>
-              <View style={styles.brandMark}><Sparkles size={15} color={Colors.white} /></View>
-              <Text style={styles.brandText}>MINDSPACE</Text>
+    <AmbientBackground>
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Reveal>
+            <View style={styles.top}>
+              <View style={styles.brand}>
+                <View style={styles.logo}>
+                  <Sparkles size={16} color={P.white} />
+                </View>
+                <Text style={styles.brandText}>MINDSPACE</Text>
+              </View>
+              <View style={styles.private}>
+                <ShieldCheck size={14} color={P.mint} />
+                <Text style={styles.privateText}>PRIVATE</Text>
+              </View>
             </View>
-            <Pressable onPress={() => router.push('/login')} style={({ pressed }) => [styles.signIn, pressed && styles.signInActive]}>
-              <LogIn size={15} color={Colors.neutral[800]} />
-              <Text style={styles.signInText}>Sign in</Text>
+          </Reveal>
+
+          <Reveal delay={80}>
+            <View style={styles.hero}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.kicker}>YOUR DAILY RESET</Text>
+                <Text style={styles.greeting}>{greeting}.</Text>
+                <Text style={styles.heroSub}>
+                  A private space to understand your mind, reset your pace, and take the next useful step.
+                </Text>
+                <NeonButton onPress={() => router.push('/mood')} icon={<ArrowRight size={20} color={P.white} />}>
+                  Start your check-in
+                </NeonButton>
+              </View>
+              <View style={styles.orbPosition}>
+                <GlowOrb size={145} />
+              </View>
+            </View>
+          </Reveal>
+
+          <Reveal delay={160}>
+            <View style={styles.stats}>
+              <Stat icon={Target} value={String(count)} label="Check-ins" color={P.purple} />
+              <Stat icon={HeartPulse} value={mood ? `${mood.mood}/5` : '—'} label="Last mood" color={P.mint} />
+              <Stat
+                icon={TrendingUp}
+                value={
+                  assessment && RISK_META[assessment.risk_level as RiskLevel]
+                    ? RISK_META[assessment.risk_level as RiskLevel].label.split(' ')[0]
+                    : '—'
+                }
+                label="Wellness"
+                color={P.pink}
+              />
+            </View>
+          </Reveal>
+
+          <Reveal delay={200}>
+            <Pressable
+              onPress={() => router.push('/therapist')}
+              style={({ pressed }) => [styles.voiceBanner, pressed && { transform: [{ scale: 0.98 }] }]}
+            >
+              <View style={styles.voiceBannerLeft}>
+                <View style={styles.voiceBadge}>
+                  <View style={styles.voiceDot} />
+                  <Text style={styles.voiceBadgeText}>REAL-TIME VOICE AI</Text>
+                </View>
+                <Text style={styles.voiceBannerTitle}>Voice Therapist — Dr. Maya</Text>
+                <Text style={styles.voiceBannerSub}>
+                  Compassionate, real-time voice guidance to regulate anxiety and find clarity.
+                </Text>
+              </View>
+              <View style={styles.voiceIconWrap}>
+                <Mic size={24} color={P.white} />
+              </View>
             </Pressable>
-          </View>
-          <View style={styles.heroCopy}>
-            <Text style={styles.eyebrow}>YOUR DAILY RESET</Text>
-            <Text style={styles.greeting}>{greeting}.</Text>
-            <Text style={styles.heroSubtitle}>A calm place to notice how you're doing, choose one useful step, and keep going.</Text>
-            <RainbowAccent />
-          </View>
-          <BlurView intensity={30} tint="light" style={styles.heroPrompt}>
-            <View style={styles.heroPromptIcon}><Sparkles size={16} color={Colors.primary[700]} /></View>
-            <View style={styles.heroPromptCopy}><Text style={styles.heroPromptTitle}>What would help most right now?</Text><Text style={styles.heroPromptHint}>Pick one. Small is enough.</Text></View>
-            <ChevronRight size={18} color={Colors.primary[700]} />
-          </BlurView>
-        </View>
+          </Reveal>
 
-        {loading ? (
-          <View style={styles.loadingBox}><ActivityIndicator color={Colors.primary[600]} /><Text style={styles.loadingText}>Loading your space</Text></View>
-        ) : (
-          <>
-            <View style={styles.statsRow}>
-              <StatCard label="Check-ins" value={String(checkIns)} accent={Colors.primary[600]} />
-              <StatCard label="Last mood" value={latestMood ? MOOD_EMOJI[latestMood.mood] : '—'} accent={Colors.accent[600]} />
-              <StatCard label="Risk" value={latestAssessment ? RISK_META[latestAssessment.risk_level as RiskLevel].label.split(' ')[0] : '—'} accent={Colors.neon.purple} />
+          <Reveal delay={250}>
+            <View style={styles.section}>
+              <View>
+                <Text style={styles.kicker}>YOUR WELLNESS SPACE</Text>
+                <Text style={styles.sectionTitle}>Choose your next move.</Text>
+              </View>
+              <Text style={styles.viewAll}>View all</Text>
             </View>
+          </Reveal>
 
-            <View style={styles.sectionRow}><View><Text style={styles.sectionKicker}>ONE NEXT STEP</Text><Text style={styles.sectionTitle}>Choose what fits.</Text></View><Text style={styles.sectionMeta}>No streaks. No pressure.</Text></View>
-            <View style={styles.actionsGrid}>
-              {actions.map((action) => (
-                <ActionTile key={action.title} {...action} compact={compact} onPress={() => router.push(action.route as any)} />
-              ))}
-            </View>
+          <View style={styles.grid}>
+            {actions.map((a, i) => {
+              const I = a.icon;
+              return (
+                <Reveal key={a.title} delay={250 + i * 55} style={styles.tileWrap}>
+                  <Pressable
+                    onPress={() => router.push(a.route as any)}
+                    style={({ pressed }) => [styles.tile, pressed && { transform: [{ scale: 0.97 }] }]}
+                  >
+                    <View style={[styles.tileIcon, { shadowColor: a.c, backgroundColor: `${a.c}22` }]}>
+                      <I size={23} color={a.c} />
+                    </View>
+                    <Text style={styles.tileTitle}>{a.title}</Text>
+                    <Text style={styles.tileSub}>{a.sub}</Text>
+                    <ArrowRight size={17} color={a.c} style={styles.tileArrow} />
+                  </Pressable>
+                </Reveal>
+              );
+            })}
+          </View>
 
-            {latestMood ? (
-              <Card accent={Colors.accent[500]} style={styles.sectionCard}>
-                <View style={styles.cardHeaderRow}>
-                  <View><Text style={styles.cardEyebrow}>LATEST CHECK-IN</Text><Text style={styles.cardTitle}>You're noticing, and that counts.</Text></View>
-                  <View style={styles.emojiOrb}><Text style={styles.emoji}>{MOOD_EMOJI[latestMood.mood]}</Text></View>
+          <Reveal delay={600}>
+            <GlassCard glow style={{ marginTop: 16 }}>
+              <View style={styles.insightTop}>
+                <View style={styles.insightIcon}>
+                  <Sparkles size={18} color={P.purple} />
                 </View>
-                <Text style={styles.cardDate}>{new Date(latestMood.created_at).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
-                <View style={styles.metricsRow}>
-                  <Metric label="Mood" value={latestMood.mood} />
-                  <Metric label="Energy" value={latestMood.energy} />
-                  <Metric label="Calm" value={6 - latestMood.anxiety} />
-                  {latestMood.sleep_hours != null ? <Metric label="Sleep" value={latestMood.sleep_hours} suffix="h" /> : null}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardKicker}>TODAY'S INSIGHT</Text>
+                  <Text style={styles.insightTitle}>
+                    {mood ? 'Your check-in is a useful signal.' : 'Start with one honest check-in.'}
+                  </Text>
                 </View>
-              </Card>
-            ) : (
-              <Card tone="soft" style={styles.sectionCard}>
-                <View style={styles.emptyRow}><View style={styles.emptyIcon}><HeartPulse size={19} color={Colors.primary[700]} /></View><View style={{ flex: 1 }}><Text style={styles.cardTitle}>Start your first check-in.</Text><Text style={styles.cardBody}>A two-minute mood log gives the rest of the app something useful to work with.</Text></View></View>
-                <Pressable onPress={() => router.push('/mood')} style={styles.outlineCta}><Text style={styles.outlineCtaText}>Log mood</Text><ArrowUpRight size={16} color={Colors.primary[700]} /></Pressable>
-              </Card>
-            )}
+              </View>
+              <Text style={styles.cardBody}>
+                {mood
+                  ? 'Small patterns become clearer when you check in consistently. Use the Companion or Journal when you want to explore why.'
+                  : 'Mindspace gets more personalized as you log mood, sleep, energy and reflections.'}
+              </Text>
+            </GlassCard>
+          </Reveal>
 
-            {latestAssessment ? (
-              <Card accent={latestAssessment.score >= 65 ? Colors.error : Colors.primary[500]} style={styles.sectionCard}>
-                <View style={styles.cardHeaderRow}><View style={{ flex: 1 }}><Text style={styles.cardEyebrow}>LATEST ASSESSMENT</Text><Text style={styles.cardTitle}>{RISK_META[latestAssessment.risk_level as RiskLevel].label}</Text><Text style={styles.cardBody}>{new Date(latestAssessment.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</Text></View><View style={styles.scoreBadge}><Text style={styles.scoreText}>{latestAssessment.score}</Text><Text style={styles.scoreUnit}>/100</Text></View></View>
-                {latestAssessment.score >= 65 ? <View style={styles.alertRow}><AlertCircle size={16} color={Colors.error} /><Text style={styles.alertText}>Consider reaching out for extra support beyond the app.</Text></View> : <View style={styles.checkRow}><Check size={16} color={Colors.success} /><Text style={styles.checkText}>Keep using the app as a reflection tool, not a diagnosis.</Text></View>}
-              </Card>
-            ) : null}
+          <Reveal delay={680}>
+            <GlassCard style={{ marginTop: 12 }}>
+              <View style={styles.footerRow}>
+                <View style={styles.footerIcon}>
+                  <ShieldCheck size={18} color={P.mint} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.footerTitle}>Built for your private space.</Text>
+                  <Text style={styles.cardBody}>Reflection, not diagnosis. Support, not pressure.</Text>
+                </View>
+              </View>
+            </GlassCard>
+          </Reveal>
 
-            <Card tone="dark" style={styles.gentleCard}>
-              <View style={styles.gentleIcon}><ShieldCheck size={17} color={Colors.white} /></View>
-              <View style={{ flex: 1 }}><Text style={styles.gentleTitle}>Designed to feel quieter.</Text><Text style={styles.gentleText}>It's not a productivity dashboard — it's a small space for your next useful choice.</Text></View>
-            </Card>
-          </>
-        )}
-        <View style={{ height: 34 }} />
-      </ScrollView>
-    </SafeAreaView>
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </AmbientBackground>
   );
 }
 
-function StatCard({ label, value, accent }: { label: string; value: string; accent: string }) {
-  return <View style={[styles.statCard, { borderTopColor: accent }]}><Text style={styles.statValue}>{value}</Text><Text style={styles.statLabel}>{label}</Text></View>;
-}
-
-function ActionTile({ icon: Icon, title, helper, color, bg, onPress, compact }: { icon: ElementType; title: string; helper: string; color: string; bg: string; onPress: () => void; compact?: boolean }) {
+function Stat({ icon: Icon, value, label, color }: { icon: any; value: string; label: string; color: string }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.actionTile, { backgroundColor: bg, borderLeftColor: color }, pressed && styles.actionActive]}>
-      <View style={[styles.actionIcon, { backgroundColor: Colors.white }]}><Icon size={compact ? 19 : 21} color={color} strokeWidth={2.25} /></View>
-      <Text style={styles.actionTitle}>{title}</Text>
-      <View style={styles.actionBottom}><Text style={styles.actionHelper}>{helper}</Text><ArrowUpRight size={15} color={color} /></View>
-    </Pressable>
+    <GlassCard style={styles.stat}>
+      <Icon size={16} color={color} />
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </GlassCard>
   );
-}
-
-function Metric({ label, value, suffix = '' }: { label: string; value: number; suffix?: string }) {
-  return <View style={styles.metric}><Text style={styles.metricValue}>{value}{suffix}</Text><Text style={styles.metricLabel}>{label}</Text></View>;
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.white },
-  scroll: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
-  scrollCompact: { paddingHorizontal: 16 },
-  hero: { overflow: 'hidden', backgroundColor: Colors.neutral[900], borderRadius: Radius.xl, padding: Spacing.lg, marginBottom: Spacing.lg, position: 'relative', ...Shadows.lg },
-  orbPurple: { position: 'absolute', width: 210, height: 210, borderRadius: 105, backgroundColor: '#352064', right: -90, top: -90, opacity: 0.95 },
-  orbPink: { position: 'absolute', width: 100, height: 100, borderRadius: 50, backgroundColor: '#6A3053', right: 30, bottom: -55, opacity: 0.8 },
-  heroDots: { position: 'absolute', right: 16, top: 20 },
-  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  brandLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  brandMark: { width: 28, height: 28, borderRadius: 10, backgroundColor: Colors.primary[600], alignItems: 'center', justifyContent: 'center' },
-  brandText: { fontSize: 11, fontFamily: 'Inter-Bold', letterSpacing: 1.7, color: '#D6CCEA' },
-  signIn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: Radius.full, backgroundColor: Colors.white },
-  signInActive: { transform: [{ translateY: -1 }], opacity: 0.92 },
-  signInText: { ...Typography.caption, fontFamily: 'Inter-SemiBold', color: Colors.neutral[800] },
-  heroCopy: { marginTop: 38 },
-  eyebrow: { fontSize: 10, fontFamily: 'Inter-Bold', letterSpacing: 1.35, color: '#D7C9FF' },
-  greeting: { ...Typography.display, fontFamily: 'Inter-ExtraBold', color: Colors.white, marginTop: 6, fontSize: 33, lineHeight: 38 },
-  heroSubtitle: { ...Typography.body, fontFamily: 'Inter-Regular', color: '#C5C7D2', marginTop: 8, maxWidth: 360, lineHeight: 22 },
-  heroPrompt: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: Spacing.lg, padding: 11, borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-  heroPromptIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center' },
-  heroPromptCopy: { flex: 1 },
-  heroPromptTitle: { ...Typography.small, fontFamily: 'Inter-SemiBold', color: Colors.white },
-  heroPromptHint: { ...Typography.caption, fontFamily: 'Inter-Regular', color: '#C5C7D2', marginTop: 2 },
-  loadingBox: { paddingVertical: Spacing.xxl, alignItems: 'center', gap: 10 },
-  loadingText: { ...Typography.caption, fontFamily: 'Inter-Medium', color: Colors.neutral[400] },
-  statsRow: { flexDirection: 'row', gap: 9, marginBottom: Spacing.xl },
-  statCard: { flex: 1, backgroundColor: Colors.white, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.neutral[200], borderTopWidth: 3, paddingVertical: 13, paddingHorizontal: 11, ...Shadows.sm },
-  statValue: { fontSize: 22, lineHeight: 26, fontFamily: 'Inter-ExtraBold', color: Colors.neutral[900] },
-  statLabel: { ...Typography.caption, fontFamily: 'Inter-Medium', color: Colors.neutral[500], marginTop: 3 },
-  sectionRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 11 },
-  sectionKicker: { fontSize: 10, fontFamily: 'Inter-Bold', letterSpacing: 1.15, color: Colors.primary[600] },
-  sectionTitle: { ...Typography.h2, fontFamily: 'Inter-Bold', color: Colors.neutral[900], marginTop: 2 },
-  sectionMeta: { ...Typography.caption, fontFamily: 'Inter-Medium', color: Colors.neutral[400], paddingBottom: 2 },
-  actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  actionTile: { width: '31.8%', minWidth: 95, borderRadius: Radius.lg, borderLeftWidth: 3, padding: 12, borderWidth: 1, borderTopColor: 'rgba(0,0,0,0.04)', borderRightColor: 'rgba(0,0,0,0.04)', borderBottomColor: 'rgba(0,0,0,0.04)', ...Shadows.sm },
-  actionActive: { transform: [{ translateY: -2 }], shadowOpacity: 0.09 },
-  actionIcon: { width: 35, height: 35, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginBottom: 15 },
-  actionTitle: { fontSize: 14, lineHeight: 18, fontFamily: 'Inter-SemiBold', color: Colors.neutral[900] },
-  actionBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 7, gap: 3 },
-  actionHelper: { fontSize: 10.5, lineHeight: 14, fontFamily: 'Inter-Medium', color: Colors.neutral[500], flex: 1 },
-  sectionCard: { marginTop: Spacing.lg },
-  cardHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  cardEyebrow: { fontSize: 10, fontFamily: 'Inter-Bold', letterSpacing: 1.05, color: Colors.neutral[400] },
-  cardTitle: { ...Typography.h3, fontFamily: 'Inter-SemiBold', color: Colors.neutral[900], marginTop: 3 },
-  cardBody: { ...Typography.small, fontFamily: 'Inter-Regular', color: Colors.neutral[500], marginTop: 4, lineHeight: 20 },
-  cardDate: { ...Typography.caption, fontFamily: 'Inter-Medium', color: Colors.neutral[500], marginTop: 5 },
-  emojiOrb: { width: 47, height: 47, borderRadius: 16, backgroundColor: Colors.pastel.lavender, alignItems: 'center', justifyContent: 'center' },
-  emoji: { fontSize: 25 },
-  metricsRow: { flexDirection: 'row', gap: 8, marginTop: Spacing.md },
-  metric: { flex: 1, padding: 10, borderRadius: Radius.md, backgroundColor: Colors.neutral[100] },
-  metricValue: { fontSize: 17, fontFamily: 'Inter-Bold', color: Colors.neutral[900] },
-  metricLabel: { ...Typography.caption, fontFamily: 'Inter-Medium', color: Colors.neutral[500], marginTop: 1 },
-  emptyRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
-  emptyIcon: { width: 39, height: 39, borderRadius: 12, backgroundColor: Colors.pastel.lavender, alignItems: 'center', justifyContent: 'center' },
-  outlineCta: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: Colors.primary[200], paddingHorizontal: 11, paddingVertical: 9, borderRadius: Radius.full, marginTop: Spacing.md },
-  outlineCtaText: { ...Typography.caption, fontFamily: 'Inter-SemiBold', color: Colors.primary[700] },
-  scoreBadge: { minWidth: 66, paddingVertical: 9, paddingHorizontal: 9, borderRadius: 15, backgroundColor: Colors.primary[50], alignItems: 'center' },
-  scoreText: { fontSize: 22, fontFamily: 'Inter-ExtraBold', color: Colors.primary[700] },
-  scoreUnit: { ...Typography.caption, fontFamily: 'Inter-Medium', color: Colors.primary[500] },
-  alertRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingTop: Spacing.md, marginTop: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.neutral[200] },
-  alertText: { ...Typography.small, fontFamily: 'Inter-Medium', color: Colors.error, flex: 1 },
-  checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingTop: Spacing.md, marginTop: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.neutral[200] },
-  checkText: { ...Typography.small, fontFamily: 'Inter-Medium', color: Colors.success, flex: 1 },
-  gentleCard: { marginTop: Spacing.lg, flexDirection: 'row', gap: 11, alignItems: 'flex-start' },
-  gentleIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: Colors.primary[700], alignItems: 'center', justifyContent: 'center' },
-  gentleTitle: { ...Typography.bodyMedium, fontFamily: 'Inter-SemiBold', color: Colors.white },
-  gentleText: { ...Typography.small, fontFamily: 'Inter-Regular', color: '#C8C8D0', marginTop: 4, lineHeight: 20 },
+  safe: { flex: 1 },
+  scroll: { padding: 18, paddingBottom: 100 },
+  top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  logo: {
+    width: 31,
+    height: 31,
+    borderRadius: 11,
+    backgroundColor: P.violet,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: P.violet,
+    shadowOpacity: 0.6,
+    shadowRadius: 14,
+  },
+  brandText: { color: P.white, fontFamily: 'Inter-Bold', letterSpacing: 2, fontSize: 12 },
+  private: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: P.line,
+    borderRadius: 99,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(255,255,255,.05)',
+  },
+  privateText: { color: P.mint, fontSize: 9, fontFamily: 'Inter-Bold', letterSpacing: 1.1 },
+  hero: {
+    minHeight: 315,
+    borderRadius: 30,
+    padding: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(151,110,255,.28)',
+    backgroundColor: 'rgba(15,13,31,.88)',
+    flexDirection: 'row',
+    position: 'relative',
+  },
+  kicker: { color: '#BFAEFF', fontSize: 10, letterSpacing: 1.8, fontFamily: 'Inter-Bold' },
+  greeting: { color: P.white, fontFamily: 'Inter-ExtraBold', fontSize: 38, lineHeight: 43, marginTop: 6 },
+  heroSub: {
+    color: P.muted,
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    lineHeight: 21,
+    marginVertical: 12,
+    maxWidth: 300,
+  },
+  orbPosition: { position: 'absolute', right: -8, bottom: -8, opacity: 0.92 },
+  stats: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  stat: { flex: 1, padding: 12, borderRadius: 20, minHeight: 93 },
+  statValue: { color: P.white, fontSize: 21, fontFamily: 'Inter-Bold', marginTop: 8 },
+  statLabel: { color: P.muted, fontSize: 10, fontFamily: 'Inter-SemiBold', marginTop: 2 },
+  section: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 26, marginBottom: 12 },
+  sectionTitle: { color: P.white, fontSize: 23, fontFamily: 'Inter-Bold', marginTop: 3 },
+  viewAll: { color: P.purple, fontSize: 12, fontFamily: 'Inter-SemiBold' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  tileWrap: { width: '48%' },
+  tile: {
+    minHeight: 158,
+    borderRadius: 24,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: P.line,
+    backgroundColor: 'rgba(16,19,34,.78)',
+    overflow: 'hidden',
+  },
+  tileIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+  },
+  tileTitle: { color: P.white, fontSize: 16, fontFamily: 'Inter-Bold', marginTop: 22 },
+  tileSub: { color: P.muted, fontSize: 11.5, fontFamily: 'Inter-Regular', marginTop: 4 },
+  tileArrow: { position: 'absolute', right: 14, bottom: 15 },
+  insightTop: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  insightIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: 'rgba(139,92,246,.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardKicker: { color: P.purple, fontSize: 9.5, letterSpacing: 1.5, fontFamily: 'Inter-Bold' },
+  insightTitle: { color: P.white, fontSize: 15, fontFamily: 'Inter-Bold', marginTop: 3 },
+  cardBody: { color: P.muted, fontSize: 12.5, lineHeight: 19, fontFamily: 'Inter-Regular', marginTop: 9 },
+  footerRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  footerIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: 'rgba(77,224,178,.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footerTitle: { color: P.white, fontSize: 14, fontFamily: 'Inter-Bold' },
+  voiceBanner: {
+    marginTop: 14,
+    borderRadius: 24,
+    padding: 18,
+    backgroundColor: 'rgba(126,75,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(139,92,246,0.35)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: P.violet,
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+  },
+  voiceBannerLeft: { flex: 1, paddingRight: 12 },
+  voiceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  voiceDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: P.mint,
+  },
+  voiceBadgeText: {
+    color: P.mint,
+    fontSize: 9.5,
+    fontFamily: 'Inter-Bold',
+    letterSpacing: 1.3,
+  },
+  voiceBannerTitle: {
+    color: P.white,
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+  },
+  voiceBannerSub: {
+    color: P.muted,
+    fontSize: 11.5,
+    lineHeight: 17,
+    fontFamily: 'Inter-Regular',
+    marginTop: 3,
+  },
+  voiceIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: P.violet,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: P.violet,
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+  },
 });

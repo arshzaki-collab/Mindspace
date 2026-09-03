@@ -33,3 +33,9 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# temporary and agent caches
+.agents/
+skills-lock.json
+supabase/.temp/
+.repair-backup/

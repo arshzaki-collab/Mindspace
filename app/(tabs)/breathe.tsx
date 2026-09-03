@@ -130,10 +130,14 @@ export default function BreatheScreen() {
       useNativeDriver: true,
     }).start();
     if (elapsed > 0) {
-      await supabase.from('breathing_sessions').insert({
-        technique: selected.name,
-        duration_seconds: elapsed,
-      });
+      try {
+        await supabase.from('breathing_sessions').insert({
+          technique: selected.name,
+          duration_seconds: elapsed,
+        });
+      } catch (err) {
+        console.warn('Failed to save breathing session to Supabase', err);
+      }
     }
   };
 

@@ -1,246 +1,368 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  TextInput,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  type ViewStyle,
-} from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, Trash2, Sparkles } from 'lucide-react-native';
-import { Card } from '@/components/Card';
-import { ScreenHeader } from '@/components/ScreenHeader';
-import { Colors, Typography, Spacing, Radius, Shadows } from '@/lib/theme';
-import { supabase, type JournalEntry } from '@/lib/supabase';
+import { BookOpen, Feather, Plus, Trash2, Sparkles, CheckCircle2 } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
+import { type JournalEntry } from '@/lib/supabase';
+import { fetchJournalEntries, createJournalEntry, deleteJournalEntry } from '@/lib/localStore';
+import { AmbientBackground, GlassCard, NeonButton, P, Pill, Reveal } from '@/components/PremiumUI';
 
-// Simple keyword-based sentiment classifier (on-device "feature engineering").
-const POSITIVE_WORDS = ['happy', 'grateful', 'hope', 'joy', 'calm', 'peace', 'love', 'good', 'great', 'proud', 'excited', 'thankful', 'better', 'progress', 'smile'];
-const NEGATIVE_WORDS = ['sad', 'anxious', 'worried', 'angry', 'fear', 'hopeless', 'stressed', 'tired', 'alone', 'pain', 'struggle', 'difficult', 'bad', 'hurt', 'lost'];
+const POS = ['happy', 'grateful', 'hope', 'joy', 'calm', 'peace', 'love', 'good', 'great', 'proud', 'excited', 'thankful', 'better', 'progress', 'smile'];
+const NEG = ['sad', 'anxious', 'worried', 'angry', 'fear', 'hopeless', 'stressed', 'tired', 'alone', 'pain', 'struggle', 'difficult', 'bad', 'hurt', 'lost'];
 
-function analyzeSentiment(text: string): 'positive' | 'neutral' | 'negative' {
-  const lower = text.toLowerCase();
-  let score = 0;
-  for (const w of POSITIVE_WORDS) if (lower.includes(w)) score += 1;
-  for (const w of NEGATIVE_WORDS) if (lower.includes(w)) score -= 1;
-  if (score > 0) return 'positive';
-  if (score < 0) return 'negative';
-  return 'neutral';
+function sentiment(t: string): 'positive' | 'neutral' | 'negative' {
+  const s = t.toLowerCase();
+  let n = 0;
+  POS.forEach((w) => s.includes(w) && n++);
+  NEG.forEach((w) => s.includes(w) && n--);
+  return n > 0 ? 'positive' : n < 0 ? 'negative' : 'neutral';
 }
-
-const SENTIMENT_META = {
-  positive: { label: 'Positive', color: Colors.success, bg: '#DCFCE7' },
-  neutral: { label: 'Neutral', color: Colors.neutral[600], bg: Colors.neutral[200] },
-  negative: { label: 'Reflective', color: Colors.warning, bg: '#FEF3C7' },
-};
 
 export default function JournalScreen() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [loading, setLoading] = useState(true);
   const [writing, setWriting] = useState(false);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const loadEntries = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('journal_entries')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const { data } = await fetchJournalEntries();
     if (data) setEntries(data);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    loadEntries();
-  }, [loadEntries]);
+    load();
+  }, [load]);
 
-  const handleSave = async () => {
-    if (!body.trim()) return;
-    setSaving(true);
-    setError(null);
-    const sentiment = analyzeSentiment(body);
-    const { error: err } = await supabase.from('journal_entries').insert({
-      title: title.trim() || 'Untitled',
-      body: body.trim(),
-      sentiment,
-    });
-    setSaving(false);
-    if (err) {
-      setError('Could not save your entry. Please try again.');
+  const save = async () => {
+    if (!body.trim()) {
+      setError('Please write at least a few words in your reflection.');
       return;
     }
+    setSaving(true);
+    setError(null);
+
+    const sent = sentiment(body);
+    const { data: created, error: e } = await createJournalEntry({
+      title: title.trim() || 'Untitled reflection',
+      body: body.trim(),
+      sentiment: sent,
+    });
+
+    setSaving(false);
+
+    if (e && !created) {
+      setError(e);
+      return;
+    }
+
+    try {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {}
+
+    setSavedSuccess(true);
     setTitle('');
     setBody('');
     setWriting(false);
-    loadEntries();
+    load();
+
+    setTimeout(() => {
+      setSavedSuccess(false);
+    }, 2500);
   };
 
-  const handleDelete = async (id: string) => {
-    await supabase.from('journal_entries').delete().eq('id', id);
-    loadEntries();
+  const del = async (id: string) => {
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch {}
+    await deleteJournalEntry(id);
+    load();
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          <ScreenHeader
-            eyebrow="Reflect"
-            title="Your journal"
-            subtitle="A private place to put thoughts into words and notice patterns over time."
-            action={!writing ? { label: 'New entry', icon: <Plus size={15} color={Colors.neutral[700]} />, onPress: () => setWriting(true) } : undefined}
-          />
-
-          {writing && (
-            <Card style={{ marginTop: Spacing.md }}>
-              <TextInput
-                style={styles.titleInput}
-                value={title}
-                onChangeText={setTitle}
-                placeholder="Entry title"
-                placeholderTextColor={Colors.neutral[400]}
-              />
-              <TextInput
-                style={styles.bodyInput}
-                value={body}
-                onChangeText={setBody}
-                placeholder="Write what's on your mind..."
-                placeholderTextColor={Colors.neutral[400]}
-                multiline
-                numberOfLines={6}
-                textAlignVertical="top"
-                autoFocus
-              />
-              <View style={styles.writeActions}>
-                <Pressable style={styles.cancelButton} onPress={() => { setWriting(false); setTitle(''); setBody(''); }}>
-                  <Text style={styles.cancelText}>Cancel</Text>
-                </Pressable>
-                <Pressable style={[styles.saveEntryButton, (!body.trim() || saving) && { opacity: 0.5 }]} onPress={handleSave} disabled={!body.trim() || saving}>
-                  {saving ? (
-                    <ActivityIndicator size="small" color={Colors.white} />
-                  ) : (
-                    <>
-                      <Sparkles size={16} color={Colors.white} />
-                      <Text style={styles.saveEntryText}>Save</Text>
-                    </>
-                  )}
-                </Pressable>
+    <AmbientBackground>
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <ScrollView
+            contentContainerStyle={styles.scroll}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Reveal>
+              <View style={styles.head}>
+                <View>
+                  <Text style={styles.kicker}>YOUR SAFE SPACE</Text>
+                  <Text style={styles.title}>Journal</Text>
+                  <Text style={styles.sub}>A place to turn thoughts into patterns.</Text>
+                </View>
+                <View style={styles.book}>
+                  <BookOpen size={23} color={P.pink} />
+                </View>
               </View>
-              {error && <Text style={styles.errorText}>{error}</Text>}
-            </Card>
-          )}
+            </Reveal>
 
-          <Text style={styles.sectionTitle}>Your Entries ({entries.length})</Text>
+            {savedSuccess && (
+              <Reveal>
+                <View style={styles.successBanner}>
+                  <CheckCircle2 size={18} color={P.mint} />
+                  <Text style={styles.successBannerText}>Reflection saved successfully.</Text>
+                </View>
+              </Reveal>
+            )}
 
-          {loading ? (
-            <ActivityIndicator color={Colors.primary[600]} style={{ marginTop: Spacing.md }} />
-          ) : entries.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyEmoji}>📝</Text>
-              <Text style={styles.emptyTitle}>No entries yet</Text>
-              <Text style={styles.emptyText}>Tap the + button above to start writing.</Text>
-            </View>
-          ) : (
-            <View style={{ gap: Spacing.sm }}>
-              {entries.map((entry) => {
-                const meta = entry.sentiment ? SENTIMENT_META[entry.sentiment] : null;
-                return (
-                  <Card key={entry.id} style={styles.entryCard}>
-                    <View style={styles.entryHeader}>
+            <Reveal delay={90}>
+              <GlassCard glow style={styles.prompt}>
+                <View style={styles.promptIcon}>
+                  <Feather size={21} color={P.white} />
+                </View>
+                <Text style={styles.promptKicker}>TODAY'S PROMPT</Text>
+                <Text style={styles.promptTitle}>What made you feel a little more like yourself today?</Text>
+                <View style={{ marginTop: 12 }}>
+                  <Pill
+                    active
+                    onPress={() => {
+                      setWriting(true);
+                      setError(null);
+                    }}
+                  >
+                    Start writing
+                  </Pill>
+                </View>
+              </GlassCard>
+            </Reveal>
+
+            {!writing ? (
+              <Reveal delay={150}>
+                <NeonButton
+                  onPress={() => {
+                    setWriting(true);
+                    setError(null);
+                  }}
+                  icon={<Plus size={20} color={P.white} />}
+                >
+                  Write a reflection
+                </NeonButton>
+              </Reveal>
+            ) : (
+              <Reveal delay={120}>
+                <GlassCard style={{ marginTop: 12 }}>
+                  <TextInput
+                    value={title}
+                    onChangeText={(t) => {
+                      setTitle(t);
+                      if (error) setError(null);
+                    }}
+                    placeholder="Entry title"
+                    placeholderTextColor={P.muted}
+                    style={styles.titleInput}
+                  />
+                  <TextInput
+                    value={body}
+                    onChangeText={(b) => {
+                      setBody(b);
+                      if (error) setError(null);
+                    }}
+                    placeholder="Let it out..."
+                    placeholderTextColor={P.muted}
+                    multiline
+                    autoFocus
+                    style={styles.bodyInput}
+                  />
+                  <View style={styles.writeActions}>
+                    <Pressable
+                      onPress={() => {
+                        setWriting(false);
+                        setTitle('');
+                        setBody('');
+                        setError(null);
+                      }}
+                    >
+                      <Text style={styles.cancel}>Cancel</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={save}
+                      disabled={!body.trim() || saving}
+                      style={[styles.save, (!body.trim() || saving) && { opacity: 0.55 }]}
+                    >
+                      <Sparkles size={15} color={P.white} />
+                      <Text style={styles.saveText}>{saving ? 'Saving...' : 'Save'}</Text>
+                    </Pressable>
+                  </View>
+                  {error ? <Text style={styles.error}>{error}</Text> : null}
+                </GlassCard>
+              </Reveal>
+            )}
+
+            <Text style={styles.section}>RECENT REFLECTIONS</Text>
+            {loading ? (
+              <ActivityIndicator color={P.purple} style={{ marginTop: 20 }} />
+            ) : entries.length === 0 ? (
+              <GlassCard>
+                <Text style={styles.emptyTitle}>Your journal is waiting.</Text>
+                <Text style={styles.emptyText}>Write one honest paragraph. That's enough to start.</Text>
+              </GlassCard>
+            ) : (
+              entries.map((e, i) => (
+                <Reveal key={e.id} delay={180 + i * 35}>
+                  <GlassCard style={{ marginTop: 9 }}>
+                    <View style={styles.entryHead}>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.entryTitle}>{entry.title}</Text>
-                        <Text style={styles.entryDate}>
-                          {new Date(entry.created_at).toLocaleDateString(undefined, {
-                            weekday: 'long',
+                        <Text style={styles.entryTitle}>{e.title}</Text>
+                        <Text style={styles.date}>
+                          {new Date(e.created_at).toLocaleDateString(undefined, {
                             month: 'short',
                             day: 'numeric',
+                            year: 'numeric',
                           })}
                         </Text>
                       </View>
-                      {meta && (
-                        <View style={[styles.sentimentBadge, { backgroundColor: meta.bg }]}>
-                          <Text style={[styles.sentimentText, { color: meta.color }]}>{meta.label}</Text>
-                        </View>
-                      )}
-                      <Pressable onPress={() => handleDelete(entry.id)} hitSlop={8}>
-                        <Trash2 size={16} color={Colors.neutral[400]} />
+                      <View style={styles.badge}>
+                        <Text style={styles.badgeText}>
+                          {e.sentiment === 'negative'
+                            ? 'REFLECTIVE'
+                            : (e.sentiment ?? 'neutral').toUpperCase()}
+                        </Text>
+                      </View>
+                      <Pressable onPress={() => del(e.id)} hitSlop={10}>
+                        <Trash2 size={15} color={P.muted} />
                       </Pressable>
                     </View>
-                    <Text style={styles.entryBody} numberOfLines={4}>{entry.body}</Text>
-                  </Card>
-                );
-              })}
-            </View>
-          )}
-          <View style={{ height: 40 }} />
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+                    <Text numberOfLines={5} style={styles.entryBody}>
+                      {e.body}
+                    </Text>
+                  </GlassCard>
+                </Reveal>
+              ))
+            )}
+            <View style={{ height: 100 }} />
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </AmbientBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.white },
-  scroll: { padding: Spacing.lg },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' } as ViewStyle,
-  title: { ...Typography.h1, fontFamily: 'Inter-Bold', color: Colors.neutral[900] },
-  subtitle: { ...Typography.small, fontFamily: 'Inter-Regular', color: Colors.neutral[500], marginTop: 2 },
-  fab: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.primary[600],
+  safe: { flex: 1 },
+  scroll: { padding: 18, paddingBottom: 100 },
+  head: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  kicker: { color: '#BFAEFF', fontSize: 10, letterSpacing: 1.8, fontFamily: 'Inter-Bold' },
+  title: { color: P.white, fontSize: 31, fontFamily: 'Inter-ExtraBold', marginTop: 3 },
+  sub: { color: P.muted, fontSize: 13, lineHeight: 19, fontFamily: 'Inter-Regular', marginTop: 4 },
+  book: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,93,177,.12)',
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadows.md,
-  } as ViewStyle,
-  titleInput: {
-    ...Typography.h3,
-    fontFamily: 'Inter-SemiBold',
-    color: Colors.neutral[900],
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.neutral[200],
-    paddingBottom: 8,
-    marginBottom: Spacing.sm,
-  } as ViewStyle,
-  bodyInput: {
-    ...Typography.body,
-    fontFamily: 'Inter-Regular',
-    color: Colors.neutral[800],
-    minHeight: 120,
-    lineHeight: 24,
-  } as ViewStyle,
-  writeActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: Spacing.sm, marginTop: Spacing.md, paddingTop: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.neutral[200] } as ViewStyle,
-  cancelButton: { paddingVertical: 10, paddingHorizontal: Spacing.md } as ViewStyle,
-  cancelText: { ...Typography.bodyMedium, fontFamily: 'Inter-Medium', color: Colors.neutral[500] },
-  saveEntryButton: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,93,177,.2)',
+  },
+  successBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.primary[600],
+    gap: 8,
+    backgroundColor: 'rgba(77,224,178,.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(77,224,178,.35)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    paddingHorizontal: Spacing.md,
-    borderRadius: Radius.sm,
-  } as ViewStyle,
-  saveEntryText: { ...Typography.bodyMedium, fontFamily: 'Inter-SemiBold', color: Colors.white },
-  errorText: { ...Typography.small, fontFamily: 'Inter-Medium', color: Colors.error, marginTop: 8, textAlign: 'right' },
-  sectionTitle: { ...Typography.h3, fontFamily: 'Inter-SemiBold', color: Colors.neutral[800], marginTop: Spacing.lg, marginBottom: Spacing.sm },
-  emptyState: { alignItems: 'center', paddingVertical: Spacing.xxl },
-  emptyEmoji: { fontSize: 40 },
-  emptyTitle: { ...Typography.h3, fontFamily: 'Inter-SemiBold', color: Colors.neutral[700], marginTop: Spacing.sm },
-  emptyText: { ...Typography.body, fontFamily: 'Inter-Regular', color: Colors.neutral[400], marginTop: 4, textAlign: 'center' },
-  entryCard: {} as ViewStyle,
-  entryHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm } as ViewStyle,
-  entryTitle: { ...Typography.h3, fontFamily: 'Inter-SemiBold', color: Colors.neutral[900] },
-  entryDate: { ...Typography.small, fontFamily: 'Inter-Regular', color: Colors.neutral[500], marginTop: 2 },
-  sentimentBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: Radius.full } as ViewStyle,
-  sentimentText: { ...Typography.caption, fontFamily: 'Inter-SemiBold' },
-  entryBody: { ...Typography.body, fontFamily: 'Inter-Regular', color: Colors.neutral[600], marginTop: Spacing.sm, lineHeight: 22 },
+    marginBottom: 12,
+  },
+  successBannerText: { color: P.mint, fontSize: 13, fontFamily: 'Inter-SemiBold' },
+  prompt: { padding: 20, marginBottom: 12, backgroundColor: 'rgba(80,38,170,.15)' },
+  promptIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    backgroundColor: P.purple,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
+  promptKicker: { color: '#D0C1FF', fontSize: 9, letterSpacing: 1.7, fontFamily: 'Inter-Bold' },
+  promptTitle: { color: P.white, fontSize: 20, lineHeight: 27, fontFamily: 'Inter-Bold', marginTop: 6 },
+  titleInput: {
+    color: P.white,
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: P.line,
+  },
+  bodyInput: {
+    color: P.white,
+    fontSize: 15,
+    lineHeight: 24,
+    fontFamily: 'Inter-Regular',
+    minHeight: 150,
+    textAlignVertical: 'top',
+    paddingTop: 14,
+  },
+  writeActions: {
+    borderTopWidth: 1,
+    borderTopColor: P.line,
+    paddingTop: 12,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 18,
+    alignItems: 'center',
+  },
+  cancel: { color: P.muted, fontSize: 13, fontFamily: 'Inter-SemiBold' },
+  save: {
+    backgroundColor: P.violet,
+    borderRadius: 13,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+  },
+  saveText: { color: P.white, fontSize: 13, fontFamily: 'Inter-Bold' },
+  error: { color: P.danger, fontSize: 12, marginTop: 8, fontFamily: 'Inter-Medium' },
+  section: {
+    color: P.muted,
+    fontSize: 10,
+    letterSpacing: 1.7,
+    fontFamily: 'Inter-Bold',
+    marginTop: 25,
+    marginBottom: 4,
+  },
+  entryHead: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  entryTitle: { color: P.white, fontSize: 15, fontFamily: 'Inter-Bold' },
+  date: { color: P.muted, fontSize: 10.5, fontFamily: 'Inter-Regular', marginTop: 3 },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 99,
+    backgroundColor: 'rgba(139,92,246,.13)',
+  },
+  badgeText: { color: '#C9B9FF', fontSize: 8, fontFamily: 'Inter-Bold', letterSpacing: 0.8 },
+  entryBody: {
+    color: '#C6C7D5',
+    fontSize: 13,
+    lineHeight: 20,
+    fontFamily: 'Inter-Regular',
+    marginTop: 11,
+  },
+  emptyTitle: { color: P.white, fontSize: 16, fontFamily: 'Inter-Bold' },
+  emptyText: {
+    color: P.muted,
+    fontSize: 12.5,
+    lineHeight: 19,
+    marginTop: 5,
+    fontFamily: 'Inter-Regular',
+  },
 });

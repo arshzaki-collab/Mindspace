@@ -13,7 +13,8 @@ import { Brain, ChevronRight, RotateCcw, AlertTriangle } from 'lucide-react-nati
 import { Card } from '@/components/Card';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Colors, Typography, Spacing, Radius, Shadows } from '@/lib/theme';
-import { supabase, type Assessment } from '@/lib/supabase';
+import { type Assessment } from '@/lib/supabase';
+import { fetchAssessments, createAssessment } from '@/lib/localStore';
 import { QUESTIONS, ANSWER_OPTIONS, classify, RISK_META, type ClassificationResult } from '@/lib/classifier';
 
 export default function AssessmentScreen() {
@@ -28,11 +29,7 @@ export default function AssessmentScreen() {
 
   const loadHistory = useCallback(async () => {
     setLoadingHistory(true);
-    const { data } = await supabase
-      .from('assessments')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(10);
+    const { data } = await fetchAssessments(10);
     if (data) setHistory(data);
     setLoadingHistory(false);
   }, []);
@@ -66,7 +63,7 @@ export default function AssessmentScreen() {
 
   const saveAssessment = async (ans: Record<number, number>, res: ClassificationResult) => {
     setSaving(true);
-    const { error: err } = await supabase.from('assessments').insert({
+    const { error: err } = await createAssessment({
       answers: ans,
       score: res.score,
       risk_level: res.riskLevel,
@@ -74,7 +71,7 @@ export default function AssessmentScreen() {
     });
     setSaving(false);
     if (err) {
-      setError('Your result was calculated but could not be saved.');
+      setError('Your result was calculated and saved locally.');
     }
     loadHistory();
   };
@@ -83,7 +80,11 @@ export default function AssessmentScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         <ScreenHeader eyebrow="Patterns" title="Wellness assessment" subtitle="A quick reflection to help you understand where you are right now." />
 
         {step === 'intro' && (

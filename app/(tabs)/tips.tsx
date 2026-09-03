@@ -180,7 +180,11 @@ export default function TipsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         <ScreenHeader eyebrow="Practical support" title="Helpful tools" subtitle="Small, evidence-informed strategies for everyday moments." />
 
         <View style={styles.dailyCard}>

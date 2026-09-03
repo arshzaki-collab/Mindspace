@@ -1,7 +1,7 @@
-import { View, Text, StyleSheet, Pressable } from 'react-native';
 import type { ReactNode } from 'react';
-import { ChevronRight, Sparkles } from 'lucide-react-native';
-import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { ArrowUpRight, Sparkles } from 'lucide-react-native';
+import { Colors, Radius, Spacing, Typography, Shadows } from '@/lib/theme';
 
 export function ScreenHeader({
   eyebrow,
@@ -19,8 +19,8 @@ export function ScreenHeader({
       <View style={styles.copy}>
         {eyebrow ? (
           <View style={styles.eyebrow}>
-            <Sparkles size={13} color={Colors.primary[600]} />
-            <Text style={styles.eyebrowText}>{eyebrow.toUpperCase()}</Text>
+            <Sparkles size={12} color={Colors.primary[600]} />
+            <Text style={styles.eyebrowText}>{eyebrow}</Text>
           </View>
         ) : null}
         <Text style={styles.title}>{title}</Text>
@@ -28,13 +28,13 @@ export function ScreenHeader({
       </View>
       {action ? (
         <Pressable
-          style={({ pressed }) => [styles.action, pressed && styles.actionActive]}
           onPress={action.onPress}
           accessibilityRole="button"
+          style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
         >
           {action.icon}
           <Text style={styles.actionText}>{action.label}</Text>
-          <ChevronRight size={15} color={Colors.neutral[500]} />
+          <ArrowUpRight size={15} color={Colors.primary[700]} />
         </Pressable>
       ) : null}
     </View>
@@ -42,13 +42,13 @@ export function ScreenHeader({
 }
 
 const styles = StyleSheet.create({
-  wrap: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md, marginBottom: Spacing.lg },
+  wrap: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 22 },
   copy: { flex: 1 },
-  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-  eyebrowText: { fontSize: 10, fontFamily: 'Inter-Bold', letterSpacing: 1.15, color: Colors.primary[600] },
-  title: { ...Typography.display, fontFamily: 'Inter-ExtraBold', color: Colors.neutral[900], fontSize: 30, lineHeight: 36 },
-  subtitle: { ...Typography.body, fontFamily: 'Inter-Regular', color: Colors.neutral[500], marginTop: 7, lineHeight: 22, maxWidth: 520 },
-  action: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 9, borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.neutral[200], backgroundColor: Colors.white },
-  actionActive: { backgroundColor: Colors.neutral[100], transform: [{ translateY: -1 }] },
-  actionText: { ...Typography.caption, fontFamily: 'Inter-SemiBold', color: Colors.neutral[700] },
+  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  eyebrowText: { ...Typography.caption, color: Colors.primary[600], letterSpacing: 1.1 },
+  title: { ...Typography.display, color: Colors.ink, fontSize: 31, lineHeight: 37 },
+  subtitle: { ...Typography.body, color: Colors.body, marginTop: 8, lineHeight: 22 },
+  action: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 13, paddingVertical: 10, borderRadius: Radius.full, backgroundColor: Colors.white, ...Shadows.sm },
+  actionPressed: { transform: [{ scale: 0.97 }], opacity: 0.9 },
+  actionText: { ...Typography.caption, color: Colors.ink },
 });
